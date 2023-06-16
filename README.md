@@ -1,12 +1,12 @@
 
 <!-- Badges -->
-[![PyPI version](https://badge.fury.io/py/autopahe.svg)](https://pypi.org/project/autopahe/)
-[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/haxsysgit/autopahe/)
-[![License](https://img.shields.io/github/license/haxsysgit/autopahe?color=brightgreen)](https://github.com/haxsysgit/autopahe/blob/main/license.md)
-[![OpenIssues](https://img.shields.io/github/issues/haxsysgit/autopahe?color=important)](https://github.com/haxsysgit/autopahe/issues)
+[![PyPI version](https://badge.fury.io/py/html2django.svg)](https://pypi.org/project/html2django/)
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/haxsysgit/html2django/)
+[![License](https://img.shields.io/github/license/haxsysgit/html2django?color=brightgreen)](https://github.com/haxsysgit/html2django/blob/main/license.md)
+[![OpenIssues](https://img.shields.io/github/issues/haxsysgit/html2django?color=important)](https://github.com/haxsysgit/html2django/issues)
 <!--LineBreak-->
-[![Windows](https://img.shields.io/badge/Windows-white?style=flat-square&logo=windows&logoColor=blue)](https://github.com/haxsysgit/autopahe/)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-white?style=flat-square&logo=ubuntu&logoColor=E95420)](https://github.com/haxsysgit/autopahe/)
+[![Windows](https://img.shields.io/badge/Windows-white?style=flat-square&logo=windows&logoColor=blue)](https://github.com/haxsysgit/html2django/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-white?style=flat-square&logo=ubuntu&logoColor=E95420)](https://github.com/haxsysgit/html2django/)
 <!-- Badges -->
 
 # html2django
