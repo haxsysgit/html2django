@@ -1,0 +1,1 @@
+from djangohtml import djangoify
