@@ -43,6 +43,7 @@ def djangoify(file: str,img: bool = False ,custom_tag: str = None,custom_attr: s
     img = soup.find_all('img')
     custom = soup.find_all(custom_tag)
     elements_with_if = soup.find_all(attrs={"if": True})
+    elements_with_for = soup.find_all(attrs={"for": True})
 
     for tag in script:
         if tag.has_attr('src') and not any(x in tag['src'] for x in ['static', 'https','http']):
@@ -75,14 +76,36 @@ def djangoify(file: str,img: bool = False ,custom_tag: str = None,custom_attr: s
 
 
     # edit the html to add if statements to the elements with if attribute
-    if elements_with_if:
-        for element in elements_with_if:
-            val = element['if']
-            if val:
-                if_val = "{% if " + f"{val}" + " %}"
-                element.insert_before(if_val)
-                element.insert_after("{% endif %}")
-                del element['if']
+    for element in elements_with_if:
+        val = element['if']
+        if val:
+            possible_else = element.find_next_sibling()
+            if_val = "{% if " + f"{val}" + " %}"
+            element.insert_before(if_val)
+
+            while possible_else.has_attr('elif') or possible_else.has_attr('else'):
+                if possible_else.has_attr('elif') and possible_else['elif'] != '':
+                    possible_else.insert_before("{% elif " + f"{possible_else['elif']}" + " %}")
+                    del possible_else['elif']
+                elif possible_else.has_attr('else'):
+                    possible_else.insert_before("{% else %}")
+                    del possible_else['else']
+
+                possible_else = possible_else.find_next_sibling()
+
+            possible_else.insert_before("{% endif %}")
+            del element['if']
+
+
+    for element in elements_with_for:
+        val = element['for']
+        if val != '':
+            if_val = "{% for " + f"{val}" + " %}"
+            element.insert_before(if_val)
+
+            element.insert_after("{% endfor %}")
+            del element['for']
+
 
     # Prettifying the output with beautiful soup prettify() method
     modified_html = soup.prettify(formatter='html')
