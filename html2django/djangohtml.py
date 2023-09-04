@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 
-def djangoify(file: str,img: bool = False ,custom_tag: str = None,custom_attr: str = None,custom_value: str = None) -> None:
+def djangoify(file: str,img: bool = False ,custom_tag: str = None,custom_attr: str = None,custom_value: str = None, edit_form:bool = True, edit_a:bool = True) -> None:
 
     """
         Modifies the HTML content of a file to replace all <link> tags' href attributes, all <script> tags' src attributes and
@@ -59,13 +59,13 @@ def djangoify(file: str,img: bool = False ,custom_tag: str = None,custom_attr: s
             link['href'] = static_href
 
 
-    if img:
-        for image in img:
-            if not any(x in image['src'] for x in ['static', 'https','http']):
-                img_src = image['src']
 
-                static_img = "{% static " + f"'{img_src}'" + " %}"
-                image["src"] = static_img
+    for image in img:
+        if not any(x in image['src'] for x in ['static', 'https','http']):
+            img_src = image['src']
+
+            static_img = "{% static " + f"'{img_src}'" + " %}"
+            image["src"] = static_img
 
     if bool(custom_tag) and bool(custom_attr):
         for element in custom:
@@ -100,11 +100,35 @@ def djangoify(file: str,img: bool = False ,custom_tag: str = None,custom_attr: s
     for element in elements_with_for:
         val = element['for']
         if val != '':
-            if_val = "{% for " + f"{val}" + " %}"
-            element.insert_before(if_val)
+            for_val = "{% for " + f"{val}" + " %}"
+            element.insert_before(for_val)
 
             element.insert_after("{% endfor %}")
             del element['for']
+
+
+    if edit_form:
+        forms = soup.find_all('form')
+        for form in forms:
+            if "{% csrf_token %}" not in form.getText():
+                form.insert(0, "{% csrf_token %}")
+
+    if edit_a:
+        aElms = soup.find_all('a')
+        for a in aElms:
+            if a.has_attr('href') and not any(x in a['href'] for x in ['static', 'https','http']) and not a['href'].startswith('#') \
+                    and not a['href'].startswith('mailto') and not a['href'].startswith('{% url'):
+                href = a['href']
+                if href.startswith('/'):
+                    href = href[1:]
+                if href.endswith('/'):
+                    href = href[:-1]
+                if href.endswith('.html'):
+                    href = href[:-5]
+                if href.endswith('.htm'):
+                    href = href[:-4]
+                static_href = "{% url " + f"'{href}'" + " %}"
+                a['href'] = static_href
 
 
     # Prettifying the output with beautiful soup prettify() method
