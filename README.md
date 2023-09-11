@@ -15,7 +15,7 @@
 
 ## Description
 
-Modifies the HTML content of a file to replace all <link> tags' href attributes, all <script> tags' src attributes, and all <img> src attributes by default, also provides support for custom modification of tags and attribute with Django template tags, and adds {% load static %} to the beginning of the file.
+Modifies the HTML content of a file to replace all <link> tags' href attributes, all <script> tags' src attributes, and all <img> src attributes by default, also provides support for custom modification of tags and attribute with Django template tags, and adds {% load static %} to the beginning of the file, Also add if.
 
 
 ## Installation
@@ -52,6 +52,10 @@ Suppose you have an HTML file named index.html that looks like this:
 <body>
     <h1>Hello, World!</h1>
     <img src="image.png">
+    <div if="error_message">
+       {{ error_message }}
+       <button type="button"></button>
+    </div>
 </body>
 </html>
 ```
@@ -78,12 +82,19 @@ will modify the file to look like this:
     <body>
         <h1>Hello, World!</h1>
         <img src="{% static 'image.png' %}">
+    {% if error_message %}
+          <div>
+           {{ error_message }}
+           <button type="button">
+           </button>
+          </div>
+    {% endif %}
     </body>
     </html>
 ```
 
 Here, the <link>, <script>, and <img> tags' href and src attributes have been replaced with Django template tags, and {% load static %} has been added to the beginning of the file.
-
+Also every element with if attribute will be wrap with if tag, with the value of the attribute is the condition.
 # Parameters
 
     - file (str): The path to the input HTML file.
