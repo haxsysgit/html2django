@@ -1,27 +1,113 @@
 from bs4 import BeautifulSoup
 
-def djangoify(file: str,img: bool = False ,custom_tag: str = None,custom_attr: str = None,custom_value: str = None, edit_form:bool = True, edit_a:bool = True) -> None:
 
+def edit_if(elements_with_if):
+    for element in elements_with_if:
+        val = element['dj-if']
+        if val != '':
+            possible_else = element.find_next_sibling()
+            if_val = "{% if " + f"{val}" + " %}"
+            element.insert_before(if_val)
+
+            while possible_else.has_attr('elif') or possible_else.has_attr('else'):
+                if possible_else.has_attr('elif') and possible_else['elif'] != '':
+                    possible_else.insert_before("{% elif " + f"{possible_else['elif']}" + " %}")
+                    del possible_else['elif']
+                elif possible_else.has_attr('else'):
+                    possible_else.insert_before("{% else %}")
+                    del possible_else['else']
+
+                possible_else = possible_else.find_next_sibling()
+
+            possible_else.insert_before("{% endif %}")
+            del element['dj-if']
+
+
+def edit_for(elements_with_for):
+    for element in elements_with_for:
+        val = element['dj-for']
+        if val != '':
+            for_val = "{% for " + f"{val}" + " %}"
+            element.insert_before(for_val)
+
+            element.insert_after("{% endfor %}")
+            del element['dj-for']
+
+
+def edit_url(a_elms):
+    for a in a_elms:
+        if a.has_attr('href') and not any(x in a['href'] for x in ['static', 'https', 'http']) and not a[
+            'href'].startswith('#') \
+                and not a['href'].startswith('mailto') and not a['href'].startswith('{% url') and not a['href'] == '':
+            href = a['href']
+            if href.endswith('/'):
+                href = href[:-1]
+            if href.endswith('.html'):
+                href = href[:-5]
+            if href.endswith('.htm'):
+                href = href[:-4]
+
+            last_part = href
+            if '/' in href:
+                url_parts = href.split('/')
+                # Get the last part of the URL
+                last_part = url_parts[-1]
+
+            static_href = "{% url " + f"'{last_part}'" + " %}"
+            a['href'] = static_href
+
+
+def replace_with_static(element, attr):
+    if element.has_attr(attr) and not any(x in element[attr] for x in ['static', 'https', 'http']):
+        attr_val = element[attr]
+        jinja_value = "{% static " + f"'{attr_val}'" + " %}"
+        element[attr] = jinja_value
+
+
+def djangoify(file: str, img: bool = False, custom_tag: str = None, custom_attr: str = None, custom_value: str = None,
+              edit_form: bool = True, edit_a: bool = True) -> None:
     """
-        Modifies the HTML content of a file to replace all <link> tags' href attributes, all <script> tags' src attributes and
-        all <img> src attributes by default,also provides support for  custom  modification of  tags and attribute
-        with Django template tags, and adds "{% load static %}" to the beginning of the file, Add django if statements to each element
-        that have if attribute with the val of the attribute is the condition.
+    This function modifies the HTML content of a file to integrate it with Django template tags.
+    It performs several operations such as replacing local file references with Django static template tags,
+    adding Django CSRF tokens to forms, and modifying URLs in anchor tags to use Django URL template tags.
+    Additionally, it processes custom 'dj-if' and 'dj-for' attributes in the HTML to add Django template if and for tags.
 
+    Parameters:
+    - file (str): The path to the input HTML file that needs to be modified.
 
-        Parameters:
-            - file (str): The path to the input HTML file.
-            - img (bool): specify True if you want the img tags to be djangofied
-            - custom_tag (str): Custom html tag to modify.To be used with the custom_attr param.
-            - custom_attr (str): custom html attribute of the custom_tag
-            - custom_value (any): the value of the custon attribute
+    - img (bool): If set to True, the function will modify the 'src' attributes of <img> tags to use Django static template tags.
+                  Defaults to False.
 
-        Returns:
-            None: The function modifies the input file in place.
+    - custom_tag (str): Specifies a custom HTML tag that you want to modify. This parameter should be used in conjunction
+                        with 'custom_attr' and 'custom_value' parameters to define the modifications. Defaults to None.
 
-        Raises:
-            FileNotFoundError: If the input file cannot be found or accessed.
+    - custom_attr (str): Specifies a custom attribute of the 'custom_tag' that you want to modify. Defaults to None.
+
+    - custom_value (str): Specifies the value that should be set for the 'custom_attr' attribute. Defaults to None.
+
+    - edit_form (bool): If set to True, the function will add Django CSRF tokens to all <form> tags in the HTML file.
+                        This helps in protecting against cross-site request forgery attacks. Defaults to True.
+
+    - edit_a (bool): If set to True, the function will modify the 'href' attributes of <a> tags to use Django URL template tags,
+                     making it easier to manage URLs in Django projects. Defaults to True.
+
+    Additional Information:
+    - The script processes elements with 'dj-if' attributes to add Django template if tags. The value of the 'dj-if' attribute
+      is used as the condition in the if tag. Similarly, elements with 'dj-for' attributes are processed to add Django template
+      for tags, with the value of the 'dj-for' attribute used as the loop variable and iterable.
+
+    Returns:
+    None: The function modifies the input file in place, and does not return any value.
+
+    Raises:
+    - FileNotFoundError: If the input file cannot be found or accessed, a FileNotFoundError will be raised with a descriptive message.
+
+    Example Usage:
+    >>> djangoify('index.html', img=True, custom_tag='custom-tag', custom_attr='custom-attr', custom_value='custom-value')
+
+    This will modify 'index.html' to integrate it with Django, including modifying <img> tags and custom tags as specified.
     """
+
 
     try:
         with open(file, 'r') as f:
@@ -39,73 +125,30 @@ def djangoify(file: str,img: bool = False ,custom_tag: str = None,custom_attr: s
     soup = BeautifulSoup(original_html, 'html.parser')
 
     links = soup.find_all('link', href=True)
-    script = soup.find_all('script')
-    img = soup.find_all('img')
+    scripts = soup.find_all('script')
+    img_elements = soup.find_all('img')
     custom = soup.find_all(custom_tag)
-    elements_with_if = soup.find_all(attrs={"if": True})
-    elements_with_for = soup.find_all(attrs={"for": True})
+    elements_with_if = soup.find_all(attrs={"dj-if": True})
+    elements_with_for = soup.find_all(attrs={"dj-for": True})
 
-    for tag in script:
-        if tag.has_attr('src') and not any(x in tag['src'] for x in ['static', 'https','http']):
-            src = tag['src']
-            static_src = "{% static " + f"'{src}'" + " %}"
-            tag['src'] = static_src
-
+    for script in scripts:
+        replace_with_static(script, 'src')
 
     for link in links:
-        if not any(x in link['href'] for x in ['static', 'https','http']):
-            href = link['href']
-            static_href = "{% static " + f"'{href}'" + " %}"
-            link['href'] = static_href
+        replace_with_static(link, 'href')
 
-
-
-    for image in img:
-        if not any(x in image['src'] for x in ['static', 'https','http']):
-            img_src = image['src']
-
-            static_img = "{% static " + f"'{img_src}'" + " %}"
-            image["src"] = static_img
+    if img:
+        for image in img_elements:
+            replace_with_static(image, 'src')
 
     if bool(custom_tag) and bool(custom_attr):
         for element in custom:
-            if element.has_attr(custom_attr) and not any(x in element[custom_attr] for x in ['static', 'https','http']):
-                attr_val = element[custom_attr]
-                jinja_value = "{% static " + f"'{attr_val}'" + " %}"
-                element[custom_attr] = jinja_value
-
+            replace_with_static(element, custom_attr)
 
     # edit the html to add if statements to the elements with if attribute
-    for element in elements_with_if:
-        val = element['if']
-        if val:
-            possible_else = element.find_next_sibling()
-            if_val = "{% if " + f"{val}" + " %}"
-            element.insert_before(if_val)
+    edit_if(elements_with_if)
 
-            while possible_else.has_attr('elif') or possible_else.has_attr('else'):
-                if possible_else.has_attr('elif') and possible_else['elif'] != '':
-                    possible_else.insert_before("{% elif " + f"{possible_else['elif']}" + " %}")
-                    del possible_else['elif']
-                elif possible_else.has_attr('else'):
-                    possible_else.insert_before("{% else %}")
-                    del possible_else['else']
-
-                possible_else = possible_else.find_next_sibling()
-
-            possible_else.insert_before("{% endif %}")
-            del element['if']
-
-
-    for element in elements_with_for:
-        val = element['for']
-        if val != '':
-            for_val = "{% for " + f"{val}" + " %}"
-            element.insert_before(for_val)
-
-            element.insert_after("{% endfor %}")
-            del element['for']
-
+    edit_for(elements_with_for)
 
     if edit_form:
         forms = soup.find_all('form')
@@ -114,30 +157,15 @@ def djangoify(file: str,img: bool = False ,custom_tag: str = None,custom_attr: s
                 form.insert(0, "{% csrf_token %}")
 
     if edit_a:
-        aElms = soup.find_all('a')
-        for a in aElms:
-            if a.has_attr('href') and not any(x in a['href'] for x in ['static', 'https','http']) and not a['href'].startswith('#') \
-                    and not a['href'].startswith('mailto') and not a['href'].startswith('{% url'):
-                href = a['href']
-                if href.startswith('/'):
-                    href = href[1:]
-                if href.endswith('/'):
-                    href = href[:-1]
-                if href.endswith('.html'):
-                    href = href[:-5]
-                if href.endswith('.htm'):
-                    href = href[:-4]
-                static_href = "{% url " + f"'{href}'" + " %}"
-                a['href'] = static_href
-
+        a_elms = soup.find_all('a')
+        edit_url(a_elms)
 
     # Prettifying the output with beautiful soup prettify() method
-    modified_html = soup.prettify(formatter='html')
+    modified_html = soup.prettify()
 
     with open(file, 'w') as f:
         f.write(modified_html)
 
 
-
-if __name__ =="__main__":
+if __name__ == "__main__":
     djangoify('index.html')
